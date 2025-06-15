@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Page {{.pageNumber}}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f9f9f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        #viewers {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #count {
+            visibility: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>You are viewing Page {{.pageNumber}}</h1>
+        <p id="viewers">Current Viewers = <span id="count">0</span></p>
+    </div>
+    <script>
+        const viewerCount = document.getElementById('count');
+        const pageNumber = "{{.pageNumber}}";
+        console.log(location.host)
+        const wsUrl = "ws://" + location.host + "/ws/page-" + pageNumber;
+
+        let socket = null;
+
+        function connectWebSocket() {
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                console.log("WebSocket connected for page-" + pageNumber);
+            };
+
+            socket.onmessage = (event) => {
+                viewerCount.textContent = event.data;
+                viewerCount.style.visibility = 'visible';
+            };
+
+            socket.onerror = (err) => {
+                console.error("WebSocket error:", err);
+                viewerCount.textContent = "-1";
+                viewerCount.style.visibility = 'visible';
+            };
+
+            socket.onclose = (event) => {
+                console.warn(`WebSocket closed (code: ${event.code}, reason: ${event.reason})`);
+                viewerCount.textContent = "-1";
+                viewerCount.style.visibility = 'visible';
+
+                // Retry after 2 seconds
+                setTimeout(() => {
+                    console.log("Reconnecting WebSocket...");
+                    connectWebSocket();
+                }, 2000);
+            };
+        }
+        connectWebSocket();
+    </script>
+</body>
+
+</html>
