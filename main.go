@@ -23,11 +23,25 @@ func main() {
 
 	redisClient = redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
+		DB:   0,
 	})
+
+	/**
+	Flushing redis on server reboot is bad design in a micrservice
+	architecture, where multiple servers are added and removed as per load.
+	During each addition, the server would ideally reboot, leading to a critical issue
+
+	Keys should be flushed by redis itself, in case of failures.
+	*/
+	err := redisClient.FlushAll(ctx).Err()
+	if err != nil {
+		log.Fatalf("Failed to flush Redis: %v", err)
+	}
 
 	http.HandleFunc("/", pageHandler)
 	http.HandleFunc("/ws/", wsHandler)
 
 	fmt.Println("Server running on port 3000")
+
 	log.Fatal(http.ListenAndServe("127.0.0.1:3000", nil))
 }
