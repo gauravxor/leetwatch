@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
@@ -21,10 +20,9 @@ type wsClient struct {
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	// check if redis is working properly, otherwise close the connection
-	err := redisClient.Ping(ctx).Err()
-	if err != nil {
+	if !isRedisHealthy() {
 		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
-		log.Println("Redis server not working: ", err)
+		log.Println("Redis unhealthy")
 		return
 	}
 
@@ -64,6 +62,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		pageName: pageName,
 		sub:      sub,
 	}
+	activeClients.Store(client, struct{}{})
 
 	// listen for published messages in thd channel
 	go func() {
@@ -75,27 +74,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// handle colsing of ws connection
+	// handle closing of ws connection
 	go func() {
 		defer client.close()
 		for {
 			_, _, err := conn.ReadMessage()
 			if err != nil {
-				return
-			}
-		}
-	}()
-
-	// check if redis server suddenly becomes unavailable.
-	// in that case, close all ws connections
-	go func() {
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-		for range ticker.C {
-			err := redisClient.Ping(ctx).Err()
-			if err != nil {
-				log.Println("Redis server is unreachable:", err)
-				client.close()
 				return
 			}
 		}
@@ -106,6 +90,7 @@ func (c *wsClient) close() {
 	fmt.Println("Closing/cleaning up WS connection")
 
 	c.closeOnce.Do(func() {
+		activeClients.Delete(c)
 
 		countKey := "leetwatch:viewers:" + c.pageName
 		channel := countKey
@@ -120,5 +105,13 @@ func (c *wsClient) close() {
 		c.sub.Close()
 		c.conn.Close()
 		log.Println("WebSocket closed for", c.pageName)
+	})
+}
+
+func closeAllActiveClients() {
+	activeClients.Range(func(key, _ any) bool {
+		client := key.(*wsClient)
+		go client.close()
+		return true
 	})
 }

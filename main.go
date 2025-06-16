@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
@@ -13,10 +15,12 @@ import (
 
 // global vars for entire server
 var (
-	ctx         = context.Background() // context manager for redis
-	redisClient *redis.Client
-	upgrader    = websocket.Upgrader{}
-	templates   = template.Must(template.ParseFiles("page.html")) // template renderer
+	ctx          = context.Background() // context manager for redis
+	redisClient  *redis.Client
+	upgrader           = websocket.Upgrader{}
+	templates          = template.Must(template.ParseFiles("page.html"))
+	redisHealthy int32 = -1 // 0 -> unhealthy | 1 -> healthy | -1 -> unknown
+	activeClients sync.Map
 )
 
 func main() {
@@ -26,6 +30,12 @@ func main() {
 		DB:   0,
 	})
 
+	err := waitForInitialRedisCheck(5 * time.Second)
+	if err != nil {
+		log.Fatal("Redis not healthy at startup: ", err)
+	}
+	startRedisHealthMonitor()
+
 	/**
 	Flushing redis on server reboot is bad design in a micrservice
 	architecture, where multiple servers are added and removed as per load.
@@ -33,7 +43,8 @@ func main() {
 
 	Keys should be flushed by redis itself, in case of failures.
 	*/
-	err := redisClient.FlushAll(ctx).Err()
+
+	err = redisClient.FlushAll(ctx).Err()
 	if err != nil {
 		log.Fatalf("Failed to flush Redis: %v", err)
 	}
