@@ -19,19 +19,20 @@ type wsClient struct {
 }
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
-	// check if redis is working properly, otherwise close the connection
+	// is redis is not healthy, reject the connection request
 	if !isRedisHealthy() {
-		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 		log.Println("Redis unhealthy")
+		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
-	// allow ws connection if the redis server is working fine
+	// allow the connection
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Error upgrading ws connection: ", err)
 		return
 	}
+
 	log.Println("New WS client connected.")
 
 	pageName := strings.TrimPrefix(r.URL.Path, "/ws/")
@@ -64,26 +65,8 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	activeClients.Store(client, struct{}{})
 
-	// listen for published messages in the channel
-	go func() {
-		for msg := range ch {
-			err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
-			if err != nil {
-				return
-			}
-		}
-	}()
-
-	// handle closing of ws connection
-	go func() {
-		defer client.close()
-		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
-				return
-			}
-		}
-	}()
+	go listenRedisChannelMessages(client, ch)
+	go monitorClientDisconnection(client)
 }
 
 func (c *wsClient) close() {
@@ -114,4 +97,25 @@ func closeAllActiveClients() {
 		go client.close()
 		return true
 	})
+}
+
+func listenRedisChannelMessages(client *wsClient, ch <-chan *redis.Message) {
+	defer client.close()
+	for msg := range ch {
+		// not using appendf as redis channel data is by default a string
+		err := client.conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
+		if err != nil {
+			return
+		}
+	}
+}
+
+func monitorClientDisconnection(client *wsClient) {
+	defer client.close()
+	for {
+		_, _, err := client.conn.ReadMessage()
+		if err != nil {
+			return
+		}
+	}
 }
