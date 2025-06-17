@@ -51,7 +51,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	redisClient.Publish(ctx, channel, fmt.Sprintf("%d", updatedCount))
 
 	// send the count to the current connection
-	err = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%d", updatedCount)))
+	conn.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, "%d", updatedCount))
 
 	// subscribe to the channel for future updates
 	sub := redisClient.Subscribe(ctx, channel)
@@ -64,7 +64,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	activeClients.Store(client, struct{}{})
 
-	// listen for published messages in thd channel
+	// listen for published messages in the channel
 	go func() {
 		for msg := range ch {
 			err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
