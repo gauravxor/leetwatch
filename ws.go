@@ -72,6 +72,8 @@ func wsHandler(resp http.ResponseWriter, req *http.Request) {
 		pageName: pageName,
 	}
 
+	activeClients.Store(client, struct{}{})
+
 	// get the broadcaster for the current page
 	broadcaster := getOrCreateBroadcaster(pageName)
 	// add the WS client object to broadcaster
@@ -155,17 +157,17 @@ func getOrCreateBroadcaster(pageName string) *PageBroadcaster {
 // TODO: Figure out a better way to broadcast the messages
 func (broadcaster *PageBroadcaster) listenAndFanOut() {
 	// get the redis subscription channel
-	messageChan := broadcaster.sub.Channel()
+	// messageChan := broadcaster.sub.Channel()
 
-	for msg := range messageChan {
-		fmt.Println("New message came, iterating")
-		broadcaster.mu.Lock()
-		for client := range broadcaster.clients {
-			log.Println("WRITING")
-			client.conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
-		}
-		broadcaster.mu.Unlock()
-	}
+	// for msg := range messageChan {
+	// 	// fmt.Println("New message came, iterating")
+	// 	broadcaster.mu.Lock()
+	// 	for client := range broadcaster.clients {
+	// 		// log.Println("WRITING")
+	// 		client.conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
+	// 	}
+	// 	broadcaster.mu.Unlock()
+	// }
 }
 
 func (broadcaster *PageBroadcaster) addClient(client *wsClient) {
