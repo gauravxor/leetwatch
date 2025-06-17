@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -33,7 +33,7 @@ func pageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Requested for [%s]\n", pageName)
+	log.Printf("Requested for [%s]\n", pageName)
 
 	templateData := map[string]any{
 		"pageNumber": getPageNumber(pageName),

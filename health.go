@@ -15,7 +15,7 @@ func startRedisHealthMonitor() {
 		for range ticker.C {
 			err := redisClient.Ping(ctx).Err()
 			if err != nil {
-				fmt.Println("Redis unhealty", err)
+				log.Println("Redis unhealty", err)
 				if atomic.SwapInt32(&redisHealthy, 0) != 0 {
 					log.Println("Redis became unhealthy. Closing all clients.")
 					closeAllActiveClients()

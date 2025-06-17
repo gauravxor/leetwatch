@@ -41,7 +41,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Increment view count
 	updatedCount, err := redisClient.Incr(ctx, countKey).Result()
-	fmt.Println("The new updated count = ", updatedCount)
+	log.Println("The new updated count = ", updatedCount)
 	if err != nil {
 		log.Println("Redis INCR error:", err)
 		conn.Close() // closing WS connection in case of error
@@ -70,7 +70,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *wsClient) close() {
-	fmt.Println("Closing/cleaning up WS connection")
+	log.Println("Closing/cleaning up WS connection")
 
 	c.closeOnce.Do(func() {
 		activeClients.Delete(c)
@@ -81,7 +81,7 @@ func (c *wsClient) close() {
 		// decrement the view counter
 		updatedCount, err := redisClient.Decr(ctx, countKey).Result()
 		if err == nil {
-			fmt.Println("Disconnecting -> New count = ", updatedCount)
+			log.Println("Disconnecting -> New count = ", updatedCount)
 			// publish the decreased value in the channel
 			redisClient.Publish(ctx, channel, fmt.Sprintf("%d", updatedCount))
 		}

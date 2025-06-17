@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -15,11 +14,11 @@ import (
 
 // global vars for entire server
 var (
-	ctx          = context.Background() // context manager for redis
-	redisClient  *redis.Client
-	upgrader           = websocket.Upgrader{}
-	templates          = template.Must(template.ParseFiles("page.html"))
-	redisHealthy int32 = -1 // 0 -> unhealthy | 1 -> healthy | -1 -> unknown
+	ctx           = context.Background() // context manager for redis
+	redisClient   *redis.Client
+	upgrader            = websocket.Upgrader{}
+	templates           = template.Must(template.ParseFiles("page.html"))
+	redisHealthy  int32 = -1 // 0 -> unhealthy | 1 -> healthy | -1 -> unknown
 	activeClients sync.Map
 )
 
@@ -52,7 +51,7 @@ func main() {
 	http.HandleFunc("/", pageHandler)
 	http.HandleFunc("/ws/", wsHandler)
 
-	fmt.Println("Server running on port 3000")
+	log.Println("Server running on port 3000")
 
 	log.Fatal(http.ListenAndServe("127.0.0.1:3000", nil))
 }
