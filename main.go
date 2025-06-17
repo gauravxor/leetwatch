@@ -14,13 +14,13 @@ import (
 
 // global vars for entire server
 var (
-	ctx           = context.Background() // context manager for redis
-	redisClient   *redis.Client
-	upgrader            = websocket.Upgrader{}
-	templates           = template.Must(template.ParseFiles("page.html"))
-	redisHealthy  int32 = -1 // 0 -> unhealthy | 1 -> healthy | -1 -> unknown
-	activeClients sync.Map
-	broadcasters = make(map[string]*PageBroadcaster)
+	ctx            = context.Background() // context manager for redis
+	redisClient    *redis.Client
+	upgrader             = websocket.Upgrader{}
+	templates            = template.Must(template.ParseFiles("page.html"))
+	redisHealthy   int32 = -1 // 0 -> unhealthy | 1 -> healthy | -1 -> unknown
+	activeClients  sync.Map
+	broadcasters   = make(map[string]*PageBroadcaster)
 	broadcastersMu sync.Mutex
 )
 
@@ -55,5 +55,8 @@ func main() {
 
 	log.Println("Server running on port 3000")
 
+	go startMetricsLogger("withBroadcast")
+
 	log.Fatal(http.ListenAndServe("127.0.0.1:3000", nil))
+
 }
