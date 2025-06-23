@@ -17,7 +17,7 @@ var (
 	ctx            = context.Background() // context manager for redis
 	redisClient    *redis.Client
 	upgrader             = websocket.Upgrader{}
-	templates            = template.Must(template.ParseFiles("page.html"))
+	templates            = template.Must(template.ParseFiles("subscriber/page.html"))
 	redisHealthy   int32 = -1 // 0 -> unhealthy | 1 -> healthy | -1 -> unknown
 	activeClients  sync.Map
 	broadcasters   = make(map[string]*PageBroadcaster)

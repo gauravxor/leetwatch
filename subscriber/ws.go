@@ -62,7 +62,8 @@ func wsHandler(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	// publish count in the channel for current page
-	redisClient.Publish(ctx, channel, fmt.Sprintf("%d", updatedCount))
+	// moving the logic to a different service
+	// redisClient.Publish(ctx, channel, fmt.Sprintf("%d", updatedCount))
 
 	// send the count to the current connection
 	conn.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, "%d", updatedCount))
@@ -89,14 +90,15 @@ func (client *wsClient) close() {
 		activeClients.Delete(client)
 
 		countKey := "leetwatch:viewers:" + client.pageName
-		channel := countKey
+		// channel := countKey
 
 		// decrement the view counter
 		updatedCount, err := redisClient.Decr(ctx, countKey).Result()
 		if err == nil {
 			log.Println("Disconnecting -> New count = ", updatedCount)
 			// publish the decreased value in the channel
-			redisClient.Publish(ctx, channel, fmt.Sprintf("%d", updatedCount))
+			// moved the logic to publisher service
+			// redisClient.Publish(ctx, channel, fmt.Sprintf("%d", updatedCount))
 		}
 		if client.sub != nil {
 			client.sub.Close()
