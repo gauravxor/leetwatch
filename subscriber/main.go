@@ -12,9 +12,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// global vars for entire server
 var (
-	ctx            = context.Background() // context manager for redis
+	ctx            = context.Background()
 	redisClient    *redis.Client
 	upgrader             = websocket.Upgrader{}
 	templates            = template.Must(template.ParseFiles("subscriber/page.html"))
@@ -42,7 +41,7 @@ func main() {
 
 	log.Println("Server running on port 3000")
 
-	go startMetricsLogger("withBroadcast")
+	startMetricsLogger("withBroadcast")
 
 	log.Fatal(http.ListenAndServe("127.0.0.1:3000", nil))
 
