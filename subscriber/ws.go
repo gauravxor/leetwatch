@@ -13,10 +13,9 @@ import (
 )
 
 type wsClient struct {
-	conn      *websocket.Conn // the actual ws connection
-	pageName  string          // the page being viewed through the current ws client instance
-	sub       *redis.PubSub   // redis pubsub subscription instance
-	closeOnce sync.Once       // cleanup
+	connection *websocket.Conn // the websocket connection
+	pageName   string          // the page viewed through websocket connection
+	closeOnce  sync.Once
 }
 
 // to store the channel subscription connection for a page.
@@ -32,45 +31,38 @@ type PageBroadcaster struct {
 }
 
 func wsHandler(resp http.ResponseWriter, req *http.Request) {
-	// is redis is not healthy, reject the connection request
 	if !isRedisHealthy() {
 		log.Println("Redis unhealthy")
 		http.Error(resp, "Service unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
-	// allow the connection
-	conn, err := upgrader.Upgrade(resp, req, nil)
+	wsConnection, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
-		log.Println("Error upgrading ws connection: ", err)
+		log.Println("Error upgrading WS connection: ", err)
 		return
 	}
 
 	log.Println("Client connected.")
 
 	pageName := strings.TrimPrefix(req.URL.Path, "/ws/")
-	channel := "leetwatch:viewers:" + pageName
-	countKey := channel
+	countKey := countKeyPrefix + pageName
 
-	// increase the count of viewers/subscribers for the given page
+	// increase the viewer's count for the given page
 	updatedCount, err := redisClient.Incr(ctx, countKey).Result()
-	log.Println("The new updated count = ", updatedCount)
+	log.Printf("Updated viewers = %d", updatedCount)
 	if err != nil {
 		log.Println("Redis INCR error:", err)
-		conn.Close() // closing WS connection in case of error
+		wsConnection.Close()
 		return
 	}
 
-	// publish count in the channel for current page
-	// moving the logic to a different service
-	// redisClient.Publish(ctx, channel, fmt.Sprintf("%d", updatedCount))
-
-	// send the count to the current connection
-	conn.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, "%d", updatedCount))
+	// immediately send the viewer's count to the connected client
+	wsConnection.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, "%d", updatedCount))
 
 	client := &wsClient{
-		conn:     conn,
-		pageName: pageName,
+		connection: wsConnection,
+		pageName:   pageName,
 	}
 
 	activeClients.Store(client, struct{}{})
@@ -89,21 +81,16 @@ func (client *wsClient) close() {
 	client.closeOnce.Do(func() {
 		activeClients.Delete(client)
 
-		countKey := "leetwatch:viewers:" + client.pageName
-		// channel := countKey
+		countKey := countKeyPrefix + client.pageName
 
 		// decrement the view counter
-		updatedCount, err := redisClient.Decr(ctx, countKey).Result()
-		if err == nil {
-			log.Println("Disconnecting -> New count = ", updatedCount)
-			// publish the decreased value in the channel
-			// moved the logic to publisher service
-			// redisClient.Publish(ctx, channel, fmt.Sprintf("%d", updatedCount))
+		_, err := redisClient.Decr(ctx, countKey).Result()
+		if err != nil {
+			// TODO: Handle stale values
+			log.Println("Redis DECR error:", err)
 		}
-		if client.sub != nil {
-			client.sub.Close()
-		}
-		client.conn.Close()
+
+		client.connection.Close()
 		log.Println("WebSocket closed for", client.pageName)
 	})
 }
@@ -118,9 +105,9 @@ func closeAllActiveClients() {
 
 func monitorClientDisconnection(client *wsClient, broadcaster *PageBroadcaster) {
 	for {
-		if _, _, err := client.conn.ReadMessage(); err != nil {
-			client.conn.Close()
+		if _, _, err := client.connection.ReadMessage(); err != nil {
 			broadcaster.removeClient(client)
+			client.close()
 			return
 		}
 	}
@@ -130,15 +117,14 @@ func getOrCreateBroadcaster(pageName string) *PageBroadcaster {
 	broadcastersMu.Lock()
 	defer broadcastersMu.Unlock()
 
-	// check if any existing broadcaster is there for the requested page
+	// if existing broadcaster is there for the given page, return it.
 	if existing, ok := broadcasters[pageName]; ok {
 		return existing
 	}
 
 	// if not, then create one
 	ctx, cancel := context.WithCancel(context.Background())
-	channel := "leetwatch:viewers:" + pageName
-	redisSub := redisClient.Subscribe(ctx, channel)
+	redisSub := redisClient.Subscribe(ctx, channelPrefix+pageName)
 
 	broadcaster := &PageBroadcaster{
 		pageName: pageName,
@@ -166,7 +152,7 @@ func (broadcaster *PageBroadcaster) listenAndFanOut() {
 		broadcaster.mu.Lock()
 		for client := range broadcaster.clients {
 			// log.Println("WRITING")
-			client.conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
+			client.connection.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
 		}
 		broadcaster.mu.Unlock()
 	}
