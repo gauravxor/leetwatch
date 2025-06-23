@@ -67,9 +67,7 @@ func wsHandler(resp http.ResponseWriter, req *http.Request) {
 
 	activeClients.Store(client, struct{}{})
 
-	// get the broadcaster for the current page
 	broadcaster := getOrCreateBroadcaster(pageName)
-	// add the WS client object to broadcaster
 	broadcaster.addClient(client)
 
 	go monitorClientDisconnection(client, broadcaster)
@@ -107,7 +105,6 @@ func monitorClientDisconnection(client *wsClient, broadcaster *PageBroadcaster) 
 	for {
 		if _, _, err := client.connection.ReadMessage(); err != nil {
 			broadcaster.removeClient(client)
-			client.close()
 			return
 		}
 	}

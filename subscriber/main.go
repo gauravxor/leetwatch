@@ -21,6 +21,8 @@ var (
 	activeClients  sync.Map
 	broadcasters   = make(map[string]*PageBroadcaster)
 	broadcastersMu sync.Mutex
+	channelPrefix  = "leetwatch:viewers:"
+	countKeyPrefix = "leetwatch:viewers:"
 )
 
 func main() {
