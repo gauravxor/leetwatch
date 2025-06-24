@@ -24,9 +24,9 @@ func updateCountKeys() {
 
 		for range ticker.C {
 			startTime := time.Now()
-			keys, _ := redisClient.Keys(ctx, keyPrefix+"*").Result()
+			channels, _ := redisClient.PubSubChannels(ctx, keyPrefix+"*").Result()
 			mu.Lock()
-			countKeys = keys
+			countKeys = channels
 			mu.Unlock()
 			timeElapsed := time.Since(startTime)
 			log.Printf("CountKeys updated. Total keys = %d, Took %s\n", len(countKeys), timeElapsed)
