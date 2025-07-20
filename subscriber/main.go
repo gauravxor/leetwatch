@@ -5,11 +5,13 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -27,8 +29,20 @@ var (
 
 func main() {
 
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using defaults")
+	}
+	redisHost := os.Getenv("REDIS_HOST")
+	if redisHost == "" {
+		redisHost = "locahost"
+	}
+	redisPort := os.Getenv("REDIS_PORT")
+	if redisPort == "" {
+		redisPort = "6379"
+	}
+
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: redisHost + ":" + redisPort,
 		DB:   0,
 	})
 
@@ -41,10 +55,14 @@ func main() {
 	http.HandleFunc("/", pageHandler)
 	http.HandleFunc("/ws/", wsHandler)
 
-	log.Println("Server running on port 8080")
-
 	startMetricsLogger("withBroadcast")
 
-	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
+	port := os.Getenv("SUBSCRIBER_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Println("Server running on port " + port)
+
+	log.Fatal(http.ListenAndServe("127.0.0.1:"+port, nil))
 
 }
