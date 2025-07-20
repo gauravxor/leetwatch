@@ -14,9 +14,13 @@ import (
 )
 
 var (
-	ctx            = context.Background()
-	redisClient    *redis.Client
-	upgrader             = websocket.Upgrader{}
+	ctx         = context.Background()
+	redisClient *redis.Client
+	upgrader    = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
 	redisHealthy   int32 = -1 // 0 -> unhealthy | 1 -> healthy | -1 -> unknown
 	activeClients  sync.Map
 	broadcasters   = make(map[string]*PageBroadcaster)
