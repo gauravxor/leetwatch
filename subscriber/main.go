@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -18,7 +17,6 @@ var (
 	ctx            = context.Background()
 	redisClient    *redis.Client
 	upgrader             = websocket.Upgrader{}
-	templates            = template.Must(template.ParseFiles("subscriber/page.html"))
 	redisHealthy   int32 = -1 // 0 -> unhealthy | 1 -> healthy | -1 -> unknown
 	activeClients  sync.Map
 	broadcasters   = make(map[string]*PageBroadcaster)
@@ -34,7 +32,7 @@ func main() {
 	}
 	redisHost := os.Getenv("REDIS_HOST")
 	if redisHost == "" {
-		redisHost = "locahost"
+		redisHost = "localhost"
 	}
 	redisPort := os.Getenv("REDIS_PORT")
 	if redisPort == "" {
@@ -46,9 +44,9 @@ func main() {
 	}
 
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: redisHost + ":" + redisPort,
+		Addr:     redisHost + ":" + redisPort,
 		Password: redisPassword,
-		DB:   0,
+		DB:       0,
 	})
 
 	err := waitForInitialRedisCheck(5 * time.Second)
@@ -57,7 +55,6 @@ func main() {
 	}
 	startRedisHealthMonitor()
 
-	http.HandleFunc("/", pageHandler)
 	http.HandleFunc("/ws/", wsHandler)
 
 	startMetricsLogger()

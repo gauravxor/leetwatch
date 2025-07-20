@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Page {{.pageNumber}}</title>
+    <title>Page</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -40,22 +40,30 @@
 
 <body>
     <div class="container">
-        <h1>You are viewing Page {{.pageNumber}}</h1>
+        <h1 id="page-header">You are viewing Page </h1>
         <p id="viewers">Current Viewers = <span id="count">0</span></p>
     </div>
+
     <script>
         const viewerCount = document.getElementById('count');
-        const pageNumber = "{{.pageNumber}}";
-        console.log(location.host)
-        const wsUrl = "ws://" + location.host + "/ws/page-" + pageNumber;
+        const pageHeader = document.getElementById('page-header');
 
+        // Extract page number from URL like "/page-1"
+        console.log(location.pathname)
+        const pathParts = location.pathname.split('/');
+        const pagePart = pathParts.find(part => part.startsWith('page-'));
+        const pageNumber = pagePart ? pagePart.split('-')[1] : 'unknown';
+
+        pageHeader.textContent = `You are viewing Page ${pageNumber}`;
+
+        const wsUrl = `ws://${location.host}/ws/page-${pageNumber}`;
         let socket = null;
 
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
 
             socket.onopen = () => {
-                console.log("WebSocket connected for page-" + pageNumber);
+                console.log(`WebSocket connected for page-${pageNumber}`);
             };
 
             socket.onmessage = (event) => {
@@ -73,14 +81,10 @@
                 console.warn(`WebSocket closed (code: ${event.code}, reason: ${event.reason})`);
                 viewerCount.textContent = "-1";
                 viewerCount.style.visibility = 'visible';
-
-                // Retry after 2 seconds
-                setTimeout(() => {
-                    console.log("Reconnecting WebSocket...");
-                    connectWebSocket();
-                }, 2000);
+                setTimeout(connectWebSocket, 2000);
             };
         }
+
         connectWebSocket();
     </script>
 </body>
