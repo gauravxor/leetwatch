@@ -63,8 +63,12 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	host := os.Getenv("SUBSCRIBER_HOST")
+	if host == "" {
+		host = "8080"
+	}
 	log.Println("Server running on port " + port)
 
-	log.Fatal(http.ListenAndServe("127.0.0.1:"+port, nil))
+	log.Fatal(http.ListenAndServe(host+":"+port, nil))
 
 }
