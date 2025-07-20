@@ -55,7 +55,7 @@ func main() {
 	http.HandleFunc("/", pageHandler)
 	http.HandleFunc("/ws/", wsHandler)
 
-	startMetricsLogger("withBroadcast")
+	startMetricsLogger()
 
 	port := os.Getenv("SUBSCRIBER_PORT")
 	if port == "" {
