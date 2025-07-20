@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -67,13 +68,28 @@ func publishUpdatedCount() {
 	}()
 }
 
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	status := "OK"
+	redisStatus := "OK"
+
+	_, err := redisClient.Ping(ctx).Result()
+	if err != nil {
+		status = "Unhealthy"
+		redisStatus = "Redis connection failed: " + err.Error()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"` + status + `","redis":"` + redisStatus + `"}`))
+}
+
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using defaults")
 	}
 	redisHost := os.Getenv("REDIS_HOST")
 	if redisHost == "" {
-		redisHost = "locahost"
+		redisHost = "localhost"
 	}
 	redisPort := os.Getenv("REDIS_PORT")
 	if redisPort == "" {
@@ -84,13 +100,26 @@ func main() {
 		redisPassword = ""
 	}
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: redisHost + ":" + redisPort,
+		Addr:     redisHost + ":" + redisPort,
 		Password: redisPassword,
-		DB:   0,
+		DB:       0,
 	})
 
 	updateCountKeys()
 	publishUpdatedCount()
 
-	select {}
+	http.HandleFunc("/health", healthHandler)
+
+	host := os.Getenv("PUBLISHER_HOST")
+	if host == "" {
+		host = "0.0.0.0"
+	}
+	port := os.Getenv("PUBLISHER_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Println("Server starting on port " + port)
+	if err := http.ListenAndServe(host+":"+port, nil); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }
