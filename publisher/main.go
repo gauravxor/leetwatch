@@ -79,8 +79,13 @@ func main() {
 	if redisPort == "" {
 		redisPort = "6379"
 	}
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+	if redisPassword == "" {
+		redisPassword = ""
+	}
 	redisClient = redis.NewClient(&redis.Options{
 		Addr: redisHost + ":" + redisPort,
+		Password: redisPassword,
 		DB:   0,
 	})
 
