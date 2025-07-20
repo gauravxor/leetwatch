@@ -1,92 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Page</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f9f9f9;
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        .container {
-            background: #fff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-
-        h1 {
-            margin-bottom: 20px;
-        }
-
-        #viewers {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        #count {
-            visibility: hidden;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <title>Leetwatch</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
     <div class="container">
-        <h1 id="page-header">You are viewing Page </h1>
-        <p id="viewers">Current Viewers = <span id="count">0</span></p>
+        <h1>Welcome to Leetwatch</h1>
+        <p>Visit <code>/page-1</code>, <code>/page-2</code>, etc. to start viewing live stats.</p>
     </div>
-
-    <script>
-        const viewerCount = document.getElementById('count');
-        const pageHeader = document.getElementById('page-header');
-
-        // Extract page number from URL like "/page-1"
-        console.log(location.pathname)
-        const pathParts = location.pathname.split('/');
-        const pagePart = pathParts.find(part => part.startsWith('page-'));
-        const pageNumber = pagePart ? pagePart.split('-')[1] : 'unknown';
-
-        pageHeader.textContent = `You are viewing Page ${pageNumber}`;
-
-        const wsUrl = `ws://${location.host}/ws/page-${pageNumber}`;
-        let socket = null;
-
-        function connectWebSocket() {
-            socket = new WebSocket(wsUrl);
-
-            socket.onopen = () => {
-                console.log(`WebSocket connected for page-${pageNumber}`);
-            };
-
-            socket.onmessage = (event) => {
-                viewerCount.textContent = event.data;
-                viewerCount.style.visibility = 'visible';
-            };
-
-            socket.onerror = (err) => {
-                console.error("WebSocket error:", err);
-                viewerCount.textContent = "-1";
-                viewerCount.style.visibility = 'visible';
-            };
-
-            socket.onclose = (event) => {
-                console.warn(`WebSocket closed (code: ${event.code}, reason: ${event.reason})`);
-                viewerCount.textContent = "-1";
-                viewerCount.style.visibility = 'visible';
-                setTimeout(connectWebSocket, 2000);
-            };
-        }
-
-        connectWebSocket();
-    </script>
 </body>
 
 </html>
