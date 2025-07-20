@@ -41,10 +41,10 @@ func main() {
 	http.HandleFunc("/", pageHandler)
 	http.HandleFunc("/ws/", wsHandler)
 
-	log.Println("Server running on port 3000")
+	log.Println("Server running on port 8080")
 
 	startMetricsLogger("withBroadcast")
 
-	log.Fatal(http.ListenAndServe("127.0.0.1:3000", nil))
+	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
 
 }
